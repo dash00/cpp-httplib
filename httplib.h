@@ -191,6 +191,7 @@ public:
     Server& get(const char* pattern, Handler handler);
     Server& post(const char* pattern, Handler handler);
     Server& del(const char* pattern, Handler handler);
+    Server& options(const char* pattern, Handler handler);
 
     bool set_base_dir(const char* path);
 
@@ -226,6 +227,7 @@ private:
     Handlers    get_handlers_;
     Handlers    post_handlers_;
     Handlers    delete_handlers_;
+    Handlers    options_handlers_;
     Handler     error_handler_;
     Logger      logger_;
 };
@@ -1387,6 +1389,12 @@ inline Server& Server::del(const char* pattern, Handler handler)
     return *this;
 }
 
+inline Server& Server::options(const char* pattern, Handler handler)
+{
+    options_handlers_.push_back(std::make_pair(std::regex(pattern), handler));
+    return *this;
+}
+
 inline bool Server::set_base_dir(const char* path)
 {
     if (detail::is_dir(path)) {
@@ -1465,7 +1473,7 @@ inline void Server::stop()
 
 inline bool Server::parse_request_line(const char* s, Request& req)
 {
-    static std::regex re("(GET|HEAD|POST|DELETE) ([^?]+)(?:\\?(.+?))? (HTTP/1\\.[01])\r\n");
+    static std::regex re("(GET|HEAD|POST|DELETE|OPTIONS) ([^?]+)(?:\\?(.+?))? (HTTP/1\\.[01])\r\n");
 
     std::cmatch m;
     if (std::regex_match(s, m, re)) {
@@ -1581,6 +1589,10 @@ inline bool Server::routing(Request& req, Response& res)
     else if (req.method == "DELETE")
     {
         return dispatch_request(req, res, delete_handlers_);
+    }
+    else if (req.method == "OPTIONS")
+    {
+        return dispatch_request(req, res, options_handlers_);
     }
     return false;
 }
